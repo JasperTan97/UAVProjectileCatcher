@@ -4,11 +4,11 @@
 <rosparam command="load" file="$(find drone_ball_catcher)/config/simtime_params.yaml" /> <!-- set the sim time to false for the TF from camera to base link -->
 <node name = "ball_locator_node" pkg="drone_ball_catcher" type="ball_locator" output = "screen" /> <!-- run the node for the depth camera to get xyz location of ball wrt to camera frame -->
 <node name = "ball_image_filter_node" pkg="drone_ball_catcher" type="ball_image_filter" output = "screen" />  <!-- filtered 2d image of ball -->
-<node name = "drone_test_1_node" pkg="drone_ball_catcher" type="drone_test_1" output = "screen" /> <!-- run control node to control path planning for drone -->
+<node name = "drone_test_node" pkg="drone_ball_catcher" type="drone_test_AB" output = "screen" /> <!-- run control node to control path planning for drone -->
 
-<node name = "base_link_to_map_tf" pkg="tf2_ros" type="static_transform_publisher" args= "0 0 0 -0.5 0.5 -0.5 0.5 map /base_link" /> <!-- static transform from base_link to map-->
-<node name = "camera_to_base_link_tf" pkg="tf2_ros" type="static_transform_publisher" args= "0 0 0 0 0 0 1 /base_link /camera_link" /> <!-- static transform from camera_link to base_link -->
+<node name = "base_link_to_map_tf" pkg="tf2_ros" type="static_transform_publisher" args= "0 0 0 0 0 0 1 map /base_link" /> <!-- static transform from base_link to map-->
+<node name = "camera_to_base_link_tf" pkg="tf2_ros" type="static_transform_publisher" args= "0 0 0 -0.5 0.5 -0.5 0.5 /base_link /camera_link" /> <!-- static transform from camera_link to base_link -->
 
-<node name = "ball_trajectory" pkg="drone_ball_catcher" type="ball_trajectory" output = "screen" /> <!-- run the node for ball trajectory prediction -->
 <node name = "ball_tf_node" pkg="drone_ball_catcher" type="ball_tf" output = "screen" /> <!-- run the node for ball transform frame -->
+
 </launch>

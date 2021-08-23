@@ -1,0 +1,5 @@
+<launch>
+<node name = "play" pkg="rosbag" type="play" output = "screen" required="true"
+args="/birbball_ws/src/drone_ball_catcher/bagfiles/ball_fly.bag"
+/> 
+</launch>

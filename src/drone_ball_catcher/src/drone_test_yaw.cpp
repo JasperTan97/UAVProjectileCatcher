@@ -43,7 +43,7 @@ void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
     current_location = *msg;
 }
 
-geometry_msgs::Point ball_location;
+// geometry_msgs::Point ball_location;
 geometry_msgs::Point ball_location_relative;
 void ball_cb(const geometry_msgs::PointStamped::ConstPtr& msg)
 {
@@ -55,13 +55,14 @@ void ball_cb(const geometry_msgs::PointStamped::ConstPtr& msg)
     ball_location_relative.y = msg->point.y;
     ball_location_relative.z = msg->point.z;
     // converting ball_location to map frame 
-
+/*
     try{
         //transformStamped = tfBuffer.lookupTransform("/map", "/camera_link", ros::Time(0));
         //tf2_geometry_msgs::do_transform(*msg, ball_location_map, transformStamped);
         geometry_msgs::PointStamped ball_location_map;
 
         tfBuffer.transform(*msg, ball_location_map, "map");
+        //tfBuffer.lookupTransform("base_link", "camera_link",ros::Time(0));
 
         // ensure drone is not told to go underground
         if (ball_location_map.point.z <= 0){
@@ -83,7 +84,61 @@ void ball_cb(const geometry_msgs::PointStamped::ConstPtr& msg)
     catch (tf2::TransformException &ex) {
         //ROS_WARN("%s",ex.what());
         //ros::Duration(1.0).sleep();
+    }*/
+}
+// prediction callback
+geometry_msgs::Point ball_location;
+void ball_tf(const geometry_msgs::PointStamped::ConstPtr& msg)
+{
+    ball_location.x = msg->point.x;
+    ball_location.y = msg->point.y;
+    ball_location.z = msg->point.z;
+    look_for_ball = true;
+
+    /*
+
+    // cout << "sub run" << endl;
+    // ball location is in camera_link frame now
+    // set this relative location to ball_location_relative
+    //look_for_ball = true;
+    predicted_location_relative.x = msg->point.x;
+    predicted_location_relative.y = msg->point.y;
+    predicted_location_relative.z = msg->point.z;
+    // converting ball_location to map frame 
+
+    try{
+        //transformStamped = tfBuffer.lookupTransform("/map", "/camera_link", ros::Time(0));
+        //tf2_geometry_msgs::do_transform(*msg, ball_location_map, transformStamped);
+        geometry_msgs::PointStamped predicted_location_map;
+
+        tfBuffer.transform(*msg, predicted_location_map, "map");
+        //tfBuffer.lookupTransform("base_link", "camera_link",ros::Time(0));
+
+        // ensure drone is not told to go underground
+        if (predicted_location_map.point.z <= 0){
+            return;
+        }
+
+        predicted_location.x = predicted_location_map.point.x;
+        predicted_location.y = predicted_location_map.point.y;
+        predicted_location.z = predicted_location_map.point.z;
+
+        /*
+        geometry_msgs::PointStamped::Ptr pub (new geometry_msgs::PointStamped);
+        pub->header.frame_id = "map";
+        pub->header.stamp = ros::Time::now();
+        pub->point.x = predicted_location.x;
+        pub->point.y = predicted_location.y;
+        pub->point.z = predicted_location.z;
+        pubber->publish(pub);
+        
     }
+    catch (tf2::TransformException &ex) {
+        //ROS_WARN("%s",ex.what());
+        //ros::Duration(1.0).sleep();
+    }
+
+    */
 }
 
 int main(int argc, char **argv)
@@ -101,6 +156,8 @@ int main(int argc, char **argv)
             ("mavros/local_position/pose", 1000, pose_cb);
     ros::Subscriber ball_locator_sub = nh.subscribe<geometry_msgs::PointStamped>
             ("ball_geom", 1000, ball_cb);
+    ros::Subscriber target_location_sub = nh.subscribe<geometry_msgs::PointStamped>
+            ("ball_tf", 1000, ball_tf);
 
     // PUBLISHERS
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>

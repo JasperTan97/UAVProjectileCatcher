@@ -25,12 +25,14 @@ It does correct for any change in the ball location
 
 using namespace std; 
 
-//global
-bool look_for_ball = false;
-float collsion_threshold = 0.2;
 tf2_ros::Buffer tfBuffer; 
 tf2_ros::TransformListener *tfListener;
 ros::Publisher *pubber;
+
+//global
+bool look_for_ball = false;
+float collsion_threshold = 0.2;
+
 
 mavros_msgs::State current_state;
 void state_cb(const mavros_msgs::State::ConstPtr& msg){
@@ -39,7 +41,9 @@ void state_cb(const mavros_msgs::State::ConstPtr& msg){
 
 geometry_msgs::PoseStamped current_location;
 void pose_cb(const geometry_msgs::PoseStamped::ConstPtr& msg)
-{
+{tf2_ros::Buffer tfBuffer; 
+tf2_ros::TransformListener *tfListener;
+ros::Publisher *pubber;
     current_location = *msg;
 }
 
@@ -62,6 +66,7 @@ void ball_cb(const geometry_msgs::PointStamped::ConstPtr& msg)
         geometry_msgs::PointStamped ball_location_map;
 
         tfBuffer.transform(*msg, ball_location_map, "map");
+        //tfBuffer.lookupTransform("base_link", "camera_link",ros::Time(0));
 
         // ensure drone is not told to go underground
         if (ball_location_map.point.z <= 0){
@@ -85,6 +90,62 @@ void ball_cb(const geometry_msgs::PointStamped::ConstPtr& msg)
         //ros::Duration(1.0).sleep();
     }
 }
+// prediction callback
+geometry_msgs::Point predicted_location;
+geometry_msgs::Point predicted_location_relative;
+void predict_cb(const geometry_msgs::PointStamped::ConstPtr& msg)
+{
+    predicted_location.x = msg->point.x;
+    predicted_location.y = msg->point.y;
+    predicted_location.z = msg->point.z;
+
+    /*
+
+    // cout << "sub run" << endl;
+    // ball location is in camera_link frame now
+    // set this relative location to ball_location_relative
+    //look_for_ball = true;
+    predicted_location_relative.x = msg->point.x;
+    predicted_location_relative.y = msg->point.y;
+    predicted_location_relative.z = msg->point.z;
+    // converting ball_location to map frame 
+
+    try{
+        //transformStamped = tfBuffer.lookupTransform("/map", "/camera_link", ros::Time(0));
+        //tf2_geometry_msgs::do_transform(*msg, ball_location_map, transformStamped);
+        geometry_msgs::PointStamped predicted_location_map;
+
+        tfBuffer.transform(*msg, predicted_location_map, "map");
+        //tfBuffer.lookupTransform("base_link", "camera_link",ros::Time(0));
+
+        // ensure drone is not told to go underground
+        if (predicted_location_map.point.z <= 0){
+            return;
+        }
+
+        predicted_location.x = predicted_location_map.point.x;
+        predicted_location.y = predicted_location_map.point.y;
+        predicted_location.z = predicted_location_map.point.z;
+
+        /*
+        geometry_msgs::PointStamped::Ptr pub (new geometry_msgs::PointStamped);
+        pub->header.frame_id = "map";
+        pub->header.stamp = ros::Time::now();
+        pub->point.x = predicted_location.x;
+        pub->point.y = predicted_location.y;
+        pub->point.z = predicted_location.z;
+        pubber->publish(pub);
+        
+    }
+    catch (tf2::TransformException &ex) {
+        //ROS_WARN("%s",ex.what());
+        //ros::Duration(1.0).sleep();
+    }
+
+    */
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -101,6 +162,8 @@ int main(int argc, char **argv)
             ("mavros/local_position/pose", 1000, pose_cb);
     ros::Subscriber ball_locator_sub = nh.subscribe<geometry_msgs::PointStamped>
             ("ball_geom", 1000, ball_cb);
+    ros::Subscriber target_location_sub = nh.subscribe<geometry_msgs::PointStamped>
+            ("predicted_setpoint", 1000, predict_cb);
 
     // PUBLISHERS
     ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
@@ -224,6 +287,7 @@ int main(int argc, char **argv)
             
             if (move_drone && reading_count < min_readings){
                 reading_count++;
+                cout << reading_count << endl;
             }
             else if (!move_drone && reading_count < initial_min_readings){
                 reading_count++;
@@ -275,26 +339,26 @@ int main(int argc, char **argv)
 
                     ball_location_relative_last = ball_location_relative;
 
-                    target_location.pose.position.x = ball_location.x;
-                    target_location.pose.position.y = ball_location.y;
-                    target_location.pose.position.z = ball_location.z; //ball_location.z;
+                    target_location.pose.position.x = predicted_location.x;
+                    target_location.pose.position.y = predicted_location.y;
+                    target_location.pose.position.z = predicted_location.z; //ball_location.z;
                     target_location.pose.orientation.x = init_qx;
                     target_location.pose.orientation.y = init_qy;
                     target_location.pose.orientation.z = init_qz;
                     target_location.pose.orientation.w = init_qw;
 
-                    target_location_last.pose.position.x = ball_location.x;
-                    target_location_last.pose.position.y = ball_location.y;
-                    target_location_last.pose.position.z = ball_location.z;
+                    target_location_last.pose.position.x = predicted_location.x;
+                    target_location_last.pose.position.y = predicted_location.y;
+                    target_location_last.pose.position.z = predicted_location.z;
                     target_location_last.pose.orientation.x = init_qx;
                     target_location_last.pose.orientation.y = init_qy;
                     target_location_last.pose.orientation.z = init_qz;
                     target_location_last.pose.orientation.w = init_qw;
-                    //cout << "Moving to location " << target_location.pose.position.x << "," << target_location.pose.position.y << "," << target_location.pose.position.z << endl;
+                    cout << "Moving to location " << target_location.pose.position.x << "," << target_location.pose.position.y << "," << target_location.pose.position.z << endl;
                     // cout << theta << endl;
                 }
                 // look_for_ball = false;
-                // ROS_INFO("Ball Detected");
+                ROS_INFO("Ball Detected");
                 reading_count = 0;
             }
         }
@@ -311,12 +375,14 @@ int main(int argc, char **argv)
             ROS_INFO("Error in code");
         }
 
-        if (move_drone){
-            local_pos_pub.publish(initial_location);
+        if (move_drone && predicted_location.x != NAN){
+            local_pos_pub.publish(target_location);
+            //cout << "Target location " << target_location.pose.position.x << "," << target_location.pose.position.y << "," << target_location.pose.position.z << endl;
         }
         else{
             local_pos_pub.publish(initial_location);
         }
+        
 
         // if (!look_for_ball){
         //     string temptemp;
@@ -324,7 +390,7 @@ int main(int argc, char **argv)
         //     cin >> temptemp;
         //     look_for_ball = true;
         // }
-        // cout << "main run" << endl;
+        //cout << "main run" << endl;
         ros::spinOnce();
         rate.sleep();
     }
